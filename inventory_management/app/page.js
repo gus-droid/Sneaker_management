@@ -1,64 +1,87 @@
 'use client'
-import {useState, useEffect} from 'react';
-import {firestore} from '@/firebase';
-import {Box, Modal, Typography, Stack, TextField, Button } from "@mui/material";
-import {collection, deleteDoc, doc, getDocs, query, getDoc, setDoc } from "firebase/firestore";
+import { useState, useEffect } from 'react';
+import { firestore } from '@/firebase';
+import { Box, Modal, Typography, Stack, TextField, Button, Grid } from "@mui/material";
+import { collection, deleteDoc, doc, getDocs, query, getDoc, setDoc } from "firebase/firestore";
+
+const initialItems = [
+  { name: 'nike-air-max', image: 'https://warsawsneakerstore.com/storage/media/f1000/2022/nike/212479/nike-air-max-97-og-silver-bullet-dm0028-002-636b690d5de4d.jpg' },
+  { name: 'adidas-ultraboost', image: 'https://assets.adidas.com/images/w_600,f_auto,q_auto/bad84b99019d4386a67cd03ecc51c0a4_9366/ULTRABOOST_1.0_SHOES_Black_HQ4201_HM1.jpg' },
+  { name: 'puma-suede', image: 'https://www.shopwss.com/cdn/shop/files/37491504_1.jpg?v=1715300448' },
+  { name: 'new-balance-574', image: 'https://m.media-amazon.com/images/I/71-TrfZu4KL._AC_UY900_.jpg' },
+  { name: 'reebok-classic', image: 'https://reebok.bynder.com/transform/c80308a1-5b46-4176-be34-33a48a8e0207/100007795_SLC_eCom-tif?io=transform:fit,width:500&quality=100' },
+  // Add more items as needed
+];
 
 export default function Home() {
-  const [inventory, setInventory] = useState([])
-  const [open, setOpen] = useState(false)
-  const [itemName, setItemName] = useState('')
+  const [inventory, setInventory] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [search, setSearch] = useState('');
+  const [filteredItems, setFilteredItems] = useState(initialItems);
 
   // Updating inventory from firebase
   const updateInventory = async () => {
-    const snapshot = query(collection(firestore, 'inventory'))
-    const docs = await getDocs(snapshot)
-    const inventoryList = []
-    docs.forEach((doc)=> {
+    const snapshot = query(collection(firestore, 'inventory'));
+    const docs = await getDocs(snapshot);
+    const inventoryList = [];
+    docs.forEach((doc) => {
       inventoryList.push({
         name: doc.id,
         ...doc.data(),
-      })
-    })
-    setInventory(inventoryList)
-  }
+      });
+    });
+    setInventory(inventoryList);
+  };
 
   const addItem = async (item) => {
-    const docRef = doc(collection(firestore, 'inventory'), item)
-    const docSnap = await getDoc(docRef)
+    const docRef = doc(collection(firestore, 'inventory'), item);
+    const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      const {quantity} = docSnap.data()
-      await setDoc(docRef, {quantity: quantity + 1})
+      const { quantity } = docSnap.data();
+      await setDoc(docRef, { quantity: quantity + 1 });
     } else {
-      await setDoc(docRef, {quantity: 1})
+      await setDoc(docRef, { quantity: 1 });
     }
 
-    await updateInventory()
-  }
+    await updateInventory();
+  };
 
   const removeItem = async (item) => {
-    const docRef = doc(collection(firestore, 'inventory'), item)
-    const docSnap = await getDoc(docRef)
+    const docRef = doc(collection(firestore, 'inventory'), item);
+    const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      const {quantity} = docSnap.data()
+      const { quantity } = docSnap.data();
       if (quantity === 1) {
-        await deleteDoc(docRef)
+        await deleteDoc(docRef);
       } else {
-        await setDoc(docRef, {quantity: quantity - 1})
+        await setDoc(docRef, { quantity: quantity - 1 });
       }
     }
 
-    await updateInventory()
-  }
+    await updateInventory();
+  };
 
-  useEffect(()=>{
-    updateInventory()
-  }, [])
+  useEffect(() => {
+    updateInventory();
+  }, []);
 
-  const handleOpen = () => setOpen(true)
-  const handleClose = () => setOpen(false)
+  useEffect(() => {
+    setFilteredItems(
+      initialItems.filter(item => item.name.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [search]);
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter') {
+      setSearch(e.target.value);
+    }
+  };
 
   return (
     <Box 
@@ -69,7 +92,8 @@ export default function Home() {
       justifyContent="center" 
       alignItems="center"
       gap={2}
-      bgcolor="#1C1C1C"  // Lighter black background
+      bgcolor="#1C1C1C"
+      padding={4}
     >
       <Modal open={open} onClose={handleClose}>
         <Box
@@ -95,7 +119,7 @@ export default function Home() {
               fullWidth
               value={itemName}
               onChange={(e) => {
-                setItemName(e.target.value)
+                setItemName(e.target.value);
               }}
               InputProps={{
                 style: {
@@ -115,9 +139,9 @@ export default function Home() {
                 color: '#fff'
               }}
               onClick={() => {
-                addItem(itemName)
-                setItemName('')
-                handleClose()
+                addItem(itemName);
+                setItemName('');
+                handleClose();
               }}
             >
               Add
@@ -132,43 +156,49 @@ export default function Home() {
           color: '#fff'
         }}
         onClick={() => {
-          handleOpen()
+          handleOpen();
         }}
       >
         Add New Item
       </Button>
-      <Box border="1px solid #fff">
-        <Box 
-          width="800px" 
-          height="100px" 
-          bgcolor="#333"  // Dark gray background for the header
-          display="flex" 
-          alignItems="center" 
-          justifyContent="center"
-        >
-          <Typography variant="h2" color="#fff">
-            Inventory Items
-          </Typography>
-        </Box>
-      
-        <Stack width="800px" height="300px" spacing={2} overflow="auto">
-          {inventory.map(({name, quantity}) => (
+      <TextField
+        variant="outlined"
+        placeholder="Search for shoes..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={handleSearch}
+        InputProps={{
+          style: {
+            color: 'white',
+            backgroundColor: '#333',
+            borderColor: 'white'
+          }
+        }}
+        InputLabelProps={{
+          style: { color: 'white' }
+        }}
+        sx={{ margin: '20px 0', width: '50%' }}
+      />
+      <Grid container spacing={2} width="800px">
+        {filteredItems.map(({ name, image }) => (
+          <Grid item xs={12} sm={6} md={4} key={name}>
             <Box
-              key={name}
               width="100%"
-              minHeight="150px"
               display="flex"
+              flexDirection="column"
               alignItems="center"
               justifyContent="space-between"
-              bgcolor="#444"  // Slightly lighter gray for items
-              padding={5}
+              bgcolor="#444"
+              padding={2}
               color="#fff"
+              borderRadius={2}
             >
-              <Typography variant="h3" color="#fff" textAlign="center">
-                {name.charAt(0).toUpperCase() + name.slice(1)}
+              <img src={image} alt={name} width="100px" height="100px" />
+              <Typography variant="h6" color="#fff" textAlign="center">
+                {name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' ')}
               </Typography>
-              <Typography variant="h3" color="#fff" textAlign="center">
-                {quantity}
+              <Typography variant="body1" color="#fff" textAlign="center">
+                {inventory.find(item => item.name === name)?.quantity || 0}
               </Typography>
               <Stack direction="row" spacing={2}>
                 <Button 
@@ -178,7 +208,7 @@ export default function Home() {
                     color: '#fff'
                   }}
                   onClick={() => {
-                    addItem(name)
+                    addItem(name);
                   }}
                 >
                   Add
@@ -190,16 +220,16 @@ export default function Home() {
                     color: '#fff'
                   }}
                   onClick={() => {
-                    removeItem(name)
+                    removeItem(name);
                   }}
                 >
                   Remove
                 </Button>
               </Stack>
             </Box>
-          ))}
-        </Stack>
-      </Box>
+          </Grid>
+        ))}
+      </Grid>
     </Box>
-  )
+  );
 }
