@@ -149,7 +149,7 @@ export default function Home() {
           </Stack>
         </Box>
       </Modal>
-      <Button
+      {/* <Button
         variant="contained"
         style={{
           backgroundColor: '#28a745',
@@ -160,7 +160,7 @@ export default function Home() {
         }}
       >
         Add New Item
-      </Button>
+      </Button> */}
       <TextField
         variant="outlined"
         placeholder="Search for shoes..."
